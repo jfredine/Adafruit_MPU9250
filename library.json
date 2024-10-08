@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json",
+  "name": "Adafruit MPU9250",
+  "version": "1.0.0",
+  "description": "Library for MPU9250 motion sensor designed for use with the Adafruit Unified Sensor library",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jfredine/Adafruit_MPU9250",
+    "branch": "main"
+  },
+  "authors": 
+  [
+    {
+      "name": "John Fredine",
+      "email": "jfredine@hotmail.com",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "frameworks": "Arduino",
+  "headers": ["Adafruit_MPU9250.h"],
+  "dependencies": {
+    "adafruit/Adafruit BusIO": "*",
+    "adafruit/Adafruit Unified Sensor": "*"
+  },
+  "examples": [
+    {
+      "name": "AHRS",
+      "base": "examples/AHRS",
+      "files": [
+        "platformio.ini",
+        "src/main.cpp"
+      ]
+    }
+  ]
+}
