@@ -19,10 +19,10 @@
  *     v1.0 - First release
  */
 
-#include "Arduino.h"
+#include <Adafruit_MPU9250.h>
 #include <Wire.h>
 
-#include <Adafruit_MPU9250.h>
+#include "Arduino.h"
 
 /*!
  *    @brief  Instantiates a new MPU9250 class
@@ -33,18 +33,24 @@ Adafruit_MPU9250::Adafruit_MPU9250(void) {}
  *    @brief  Cleans up the MPU9250 class
  */
 Adafruit_MPU9250::~Adafruit_MPU9250(void) {
-  if (temp_sensor)
-    delete temp_sensor;
-  if (accel_sensor)
-    delete accel_sensor;
-  if (gyro_sensor)
-    delete gyro_sensor;
-  if (mag_sensor)
-    delete mag_sensor;
-  if (i2c_dev)
-    delete i2c_dev;
-  if (ak8963_i2c_dev)
-    delete ak8963_i2c_dev;
+    if (temp_sensor) {
+        delete temp_sensor;
+    }
+    if (accel_sensor) {
+        delete accel_sensor;
+    }
+    if (gyro_sensor) {
+        delete gyro_sensor;
+    }
+    if (mag_sensor) {
+        delete mag_sensor;
+    }
+    if (i2c_dev) {
+        delete i2c_dev;
+    }
+    if (ak8963_i2c_dev) {
+        delete ak8963_i2c_dev;
+    }
 }
 
 /*!
@@ -59,53 +65,55 @@ Adafruit_MPU9250::~Adafruit_MPU9250(void) {
  */
 
 int Adafruit_MPU9250::begin(uint8_t i2c_address, TwoWire *wire,
-                             int32_t sensor_id) {
-  delay(1000);
-  if (i2c_dev) {
-    delete i2c_dev; // remove old interface
-  }
+                            int32_t sensor_id) {
+    delay(1000);
+    if (i2c_dev) {
+        delete i2c_dev;  // remove old interface
+    }
 
-  if (ak8963_i2c_dev) {
-    delete ak8963_i2c_dev; // remove old interface
-  }
+    if (ak8963_i2c_dev) {
+        delete ak8963_i2c_dev;  // remove old interface
+    }
 
-  i2c_dev = new Adafruit_I2CDevice(i2c_address, wire);
+    i2c_dev = new Adafruit_I2CDevice(i2c_address, wire);
 
-  // For boards with I2C bus power control, may need to delay to allow
-  // MPU9250 to come up after initial power.
-  bool mpu_found = false;
-  for (uint8_t tries = 0; tries < 5; tries++) {
-    mpu_found = i2c_dev->begin();
-    if (mpu_found)
-      break;
-    delay(10);
-  }
-  if (!mpu_found)
-    return 1;
+    // For boards with I2C bus power control, may need to delay to allow
+    // MPU9250 to come up after initial power.
+    bool mpu_found = false;
+    for (uint8_t tries = 0; tries < 5; tries++) {
+        mpu_found = i2c_dev->begin();
+        if (mpu_found) {
+            break;
+        }
+        delay(10);
+    }
+    if (!mpu_found) {
+        return 1;
+    }
 
-  Adafruit_BusIO_Register chip_id =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_WHO_AM_I, 1);
+    Adafruit_BusIO_Register chip_id =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_WHO_AM_I, 1);
 
-  // make sure we're talking to the right chip
-  if (chip_id.read() != MPU9250_DEVICE_ID) {
-    return 2;
-  }
+    // make sure we're talking to the right chip
+    if (chip_id.read() != MPU9250_DEVICE_ID) {
+        return 2;
+    }
 
-  // Make the magnetometer visible on I2C bus by setting bypass mode
-  setI2CBypass(true);
+    // Make the magnetometer visible on I2C bus by setting bypass mode
+    setI2CBypass(true);
 
-  ak8963_i2c_dev = new Adafruit_I2CDevice(MPU9250_AK8963_I2CADDR, wire);
+    ak8963_i2c_dev = new Adafruit_I2CDevice(MPU9250_AK8963_I2CADDR, wire);
 
-  // Check that the magnetometer is now visible
-  Adafruit_BusIO_Register ak8963_chip_id =
-      Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_WHO_AM_I, 1);
+    // Check that the magnetometer is now visible
+    Adafruit_BusIO_Register ak8963_chip_id =
+        Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_WHO_AM_I, 1);
 
-  // make sure we're talking to the right chip
-  if (ak8963_chip_id.read() != MPU9250_AK8963_DEVICE_ID) {
-    return 3;
-  }
+    // make sure we're talking to the right chip
+    if (ak8963_chip_id.read() != MPU9250_AK8963_DEVICE_ID) {
+        return 3;
+    }
 
-  return _init(sensor_id) ? 0 : 4;
+    return _init(sensor_id) ? 0 : 4;
 }
 
 /*!  @brief Initilizes the sensor
@@ -113,63 +121,66 @@ int Adafruit_MPU9250::begin(uint8_t i2c_address, TwoWire *wire,
  *   @returns True if chip identified and initialized
  */
 bool Adafruit_MPU9250::_init(int32_t sensor_id) {
+    _sensorid_temp = sensor_id;
+    _sensorid_accel = sensor_id + 1;
+    _sensorid_gyro = sensor_id + 2;
+    _sensorid_mag = sensor_id + 3;
 
-  _sensorid_temp = sensor_id;
-  _sensorid_accel = sensor_id + 1;
-  _sensorid_gyro = sensor_id + 2;
-  _sensorid_mag = sensor_id + 3;
+    reset();
 
-  reset();
+    setSampleRateDivisor(0);
 
-  setSampleRateDivisor(0);
+    setGyroFilterBandwidth(MPU9250_GYRO_BAND_250_HZ);
+    setAccelFilterBandwidth(MPU9250_ACCEL_BAND_460_HZ);
 
-  setGyroFilterBandwidth(MPU9250_GYRO_BAND_250_HZ);
-  setAccelFilterBandwidth(MPU9250_ACCEL_BAND_460_HZ);
+    setGyroRange(MPU9250_RANGE_500_DEG);
 
-  setGyroRange(MPU9250_RANGE_500_DEG);
+    setAccelerometerRange(MPU9250_RANGE_2_G);  // already the default
 
-  setAccelerometerRange(MPU9250_RANGE_2_G); // already the default
+    Adafruit_BusIO_Register power_mgmt_1 =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
+    power_mgmt_1.write(0x01);  // set clock config to PLL with Gyro X reference
 
-  Adafruit_BusIO_Register power_mgmt_1 =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
-  power_mgmt_1.write(0x01); // set clock config to PLL with Gyro X reference
+    // enter fuse access mode of mag which is required to read adjustment data
+    setMagMode(MPU9250_AK8963_MODE_FUSE_ROM);
 
-  // enter fuse access mode of mag which is required to read adjustment data
-  setMagMode(MPU9250_AK8963_MODE_FUSE_ROM);
-  
-  // read three bytes of sensitivity adjustment data (one byte for each axis)
-  uint8_t raw[3];
-  Adafruit_BusIO_Register ak8963_asa =
-      Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_ASAX, 3);
-  ak8963_asa.read(raw, 3);
+    // read three bytes of sensitivity adjustment data (one byte for each axis)
+    uint8_t raw[3];
+    Adafruit_BusIO_Register ak8963_asa =
+        Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_ASAX, 3);
+    ak8963_asa.read(raw, 3);
 
-  // store sensitivity adjustment per axis (see data sheet for calculation)
-  asax = (static_cast<float>(raw[0]) - 128) / 256 + 1;
-  asay = (static_cast<float>(raw[1]) - 128) / 256 + 1;
-  asaz = (static_cast<float>(raw[2]) - 128) / 256 + 1;
+    // store sensitivity adjustment per axis (see data sheet for calculation)
+    asax = (static_cast<float>(raw[0]) - 128) / 256 + 1;
+    asay = (static_cast<float>(raw[1]) - 128) / 256 + 1;
+    asaz = (static_cast<float>(raw[2]) - 128) / 256 + 1;
 
-  // Finish setting up magnetometer
-  //setMagMode(MPU9250_AK8963_MODE_100HZ);
-  setMagMode(MPU9250_AK8963_MODE_100HZ);
-  setMagSensitivity(MPU9250_AK8963_SENSITIVITY_16);
-  delay(100);
+    // Finish setting up magnetometer
+    // setMagMode(MPU9250_AK8963_MODE_100HZ);
+    setMagMode(MPU9250_AK8963_MODE_100HZ);
+    setMagSensitivity(MPU9250_AK8963_SENSITIVITY_16);
+    delay(100);
 
-  // remove old reference
-  if (temp_sensor)
-    delete temp_sensor;
-  if (accel_sensor)
-    delete accel_sensor;
-  if (gyro_sensor)
-    delete gyro_sensor;
-  if (mag_sensor)
-    delete mag_sensor;
+    // remove old reference
+    if (temp_sensor) {
+        delete temp_sensor;
+    }
+    if (accel_sensor) {
+        delete accel_sensor;
+    }
+    if (gyro_sensor) {
+        delete gyro_sensor;
+    }
+    if (mag_sensor) {
+        delete mag_sensor;
+    }
 
-  temp_sensor = new Adafruit_MPU9250_Temp(this);
-  accel_sensor = new Adafruit_MPU9250_Accelerometer(this);
-  gyro_sensor = new Adafruit_MPU9250_Gyro(this);
-  mag_sensor = new Adafruit_MPU9250_Magnetometer(this);
+    temp_sensor = new Adafruit_MPU9250_Temp(this);
+    accel_sensor = new Adafruit_MPU9250_Accelerometer(this);
+    gyro_sensor = new Adafruit_MPU9250_Gyro(this);
+    mag_sensor = new Adafruit_MPU9250_Magnetometer(this);
 
-  return true;
+    return true;
 }
 /**************************************************************************/
 /*!
@@ -178,34 +189,34 @@ bool Adafruit_MPU9250::_init(int32_t sensor_id) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250::reset(void) {
-  Adafruit_BusIO_Register power_mgmt_1 =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
-  Adafruit_BusIO_Register sig_path_reset =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_SIGNAL_PATH_RESET, 1);
-  Adafruit_BusIO_RegisterBits device_reset =
-      Adafruit_BusIO_RegisterBits(&power_mgmt_1, 1, 7);
+    Adafruit_BusIO_Register power_mgmt_1 =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
+    Adafruit_BusIO_Register sig_path_reset =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_SIGNAL_PATH_RESET, 1);
+    Adafruit_BusIO_RegisterBits device_reset =
+        Adafruit_BusIO_RegisterBits(&power_mgmt_1, 1, 7);
 
-  // see register map page 41
-  device_reset.write(1);             // reset
-  while (device_reset.read() == 1) { // check for the post reset value
-    delay(1);
-  }
-  delay(100);
+    // see register map page 41
+    device_reset.write(1);              // reset
+    while (device_reset.read() == 1) {  // check for the post reset value
+        delay(1);
+    }
+    delay(100);
 
-  sig_path_reset.write(0x7);
+    sig_path_reset.write(0x7);
 
-  delay(100);
+    delay(100);
 
-  // Make the magnetometer visible on I2C bus by setting bypass mode
-  setI2CBypass(true);
+    // Make the magnetometer visible on I2C bus by setting bypass mode
+    setI2CBypass(true);
 
-  // reset magnetometer
-  Adafruit_BusIO_Register cntl_2 = 
-      Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL2, 1);
-  Adafruit_BusIO_RegisterBits ak8963_reset =
-      Adafruit_BusIO_RegisterBits(&cntl_2, 1, 0);
-  ak8963_reset.write(1);
-  delay(100);
+    // reset magnetometer
+    Adafruit_BusIO_Register cntl_2 =
+        Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL2, 1);
+    Adafruit_BusIO_RegisterBits ak8963_reset =
+        Adafruit_BusIO_RegisterBits(&cntl_2, 1, 0);
+    ak8963_reset.write(1);
+    delay(100);
 }
 
 /**************************************************************************/
@@ -215,9 +226,9 @@ void Adafruit_MPU9250::reset(void) {
 */
 /**************************************************************************/
 uint8_t Adafruit_MPU9250::getSampleRateDivisor(void) {
-  Adafruit_BusIO_Register sample_rate_div =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_SMPLRT_DIV, 1);
-  return sample_rate_div.read();
+    Adafruit_BusIO_Register sample_rate_div =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_SMPLRT_DIV, 1);
+    return sample_rate_div.read();
 }
 
 /**************************************************************************/
@@ -229,9 +240,9 @@ uint8_t Adafruit_MPU9250::getSampleRateDivisor(void) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setSampleRateDivisor(uint8_t divisor) {
-  Adafruit_BusIO_Register sample_rate_div =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_SMPLRT_DIV, 1);
-  sample_rate_div.write(divisor);
+    Adafruit_BusIO_Register sample_rate_div =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_SMPLRT_DIV, 1);
+    sample_rate_div.write(divisor);
 }
 
 /**************************************************************************/
@@ -241,12 +252,12 @@ void Adafruit_MPU9250::setSampleRateDivisor(uint8_t divisor) {
 */
 /**************************************************************************/
 mpu9250_accel_range_t Adafruit_MPU9250::getAccelerometerRange(void) {
-  Adafruit_BusIO_Register accel_config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_CONFIG, 1);
-  Adafruit_BusIO_RegisterBits accel_range =
-      Adafruit_BusIO_RegisterBits(&accel_config, 2, 3);
+    Adafruit_BusIO_Register accel_config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_CONFIG, 1);
+    Adafruit_BusIO_RegisterBits accel_range =
+        Adafruit_BusIO_RegisterBits(&accel_config, 2, 3);
 
-  return (mpu9250_accel_range_t)accel_range.read();
+    return (mpu9250_accel_range_t)accel_range.read();
 }
 
 /**************************************************************************/
@@ -257,12 +268,12 @@ mpu9250_accel_range_t Adafruit_MPU9250::getAccelerometerRange(void) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setAccelerometerRange(mpu9250_accel_range_t new_range) {
-  Adafruit_BusIO_Register accel_config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_CONFIG, 1);
+    Adafruit_BusIO_Register accel_config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_CONFIG, 1);
 
-  Adafruit_BusIO_RegisterBits accel_range =
-      Adafruit_BusIO_RegisterBits(&accel_config, 2, 3);
-  accel_range.write(new_range);
+    Adafruit_BusIO_RegisterBits accel_range =
+        Adafruit_BusIO_RegisterBits(&accel_config, 2, 3);
+    accel_range.write(new_range);
 }
 /**************************************************************************/
 /*!
@@ -271,12 +282,12 @@ void Adafruit_MPU9250::setAccelerometerRange(mpu9250_accel_range_t new_range) {
 */
 /**************************************************************************/
 mpu9250_gyro_range_t Adafruit_MPU9250::getGyroRange(void) {
-  Adafruit_BusIO_Register gyro_config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_GYRO_CONFIG, 1);
-  Adafruit_BusIO_RegisterBits gyro_range =
-      Adafruit_BusIO_RegisterBits(&gyro_config, 2, 3);
+    Adafruit_BusIO_Register gyro_config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_GYRO_CONFIG, 1);
+    Adafruit_BusIO_RegisterBits gyro_range =
+        Adafruit_BusIO_RegisterBits(&gyro_config, 2, 3);
 
-  return (mpu9250_gyro_range_t)gyro_range.read();
+    return (mpu9250_gyro_range_t)gyro_range.read();
 }
 
 /**************************************************************************/
@@ -287,12 +298,12 @@ mpu9250_gyro_range_t Adafruit_MPU9250::getGyroRange(void) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setGyroRange(mpu9250_gyro_range_t new_range) {
-  Adafruit_BusIO_Register gyro_config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_GYRO_CONFIG, 1);
-  Adafruit_BusIO_RegisterBits gyro_range =
-      Adafruit_BusIO_RegisterBits(&gyro_config, 2, 3);
+    Adafruit_BusIO_Register gyro_config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_GYRO_CONFIG, 1);
+    Adafruit_BusIO_RegisterBits gyro_range =
+        Adafruit_BusIO_RegisterBits(&gyro_config, 2, 3);
 
-  gyro_range.write(new_range);
+    gyro_range.write(new_range);
 }
 
 /**************************************************************************/
@@ -302,29 +313,29 @@ void Adafruit_MPU9250::setGyroRange(mpu9250_gyro_range_t new_range) {
 */
 /**************************************************************************/
 mpu9250_ak8963_mag_mode_t Adafruit_MPU9250::getMagMode(void) {
-  Adafruit_BusIO_Register control =
-      Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL, 1);
-  Adafruit_BusIO_RegisterBits mag_mode =
-      Adafruit_BusIO_RegisterBits(&control, 4, 0);
+    Adafruit_BusIO_Register control =
+        Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL, 1);
+    Adafruit_BusIO_RegisterBits mag_mode =
+        Adafruit_BusIO_RegisterBits(&control, 4, 0);
 
-  switch (mag_mode.read()) {
-      case 0:
-          return MPU9250_AK8963_MODE_POWER_DOWN;
-      case 1:
-          return MPU9250_AK8963_MODE_SINGLE;
-      case 2:
-          return MPU9250_AK8963_MODE_8HZ;
-      case 4:
-          return MPU9250_AK8963_MODE_EXT_TRIG;
-      case 6:
-          return MPU9250_AK8963_MODE_100HZ;
-      case 8:
-          return MPU9250_AK8963_MODE_SELF_TEST;
-      case 15:
-          return MPU9250_AK8963_MODE_FUSE_ROM;
-      default:
-          return MPU9250_AK8963_MODE_POWER_DOWN;
-  }
+    switch (mag_mode.read()) {
+        case 0:
+            return MPU9250_AK8963_MODE_POWER_DOWN;
+        case 1:
+            return MPU9250_AK8963_MODE_SINGLE;
+        case 2:
+            return MPU9250_AK8963_MODE_8HZ;
+        case 4:
+            return MPU9250_AK8963_MODE_EXT_TRIG;
+        case 6:
+            return MPU9250_AK8963_MODE_100HZ;
+        case 8:
+            return MPU9250_AK8963_MODE_SELF_TEST;
+        case 15:
+            return MPU9250_AK8963_MODE_FUSE_ROM;
+        default:
+            return MPU9250_AK8963_MODE_POWER_DOWN;
+    }
 }
 
 /**************************************************************************/
@@ -334,25 +345,24 @@ mpu9250_ak8963_mag_mode_t Adafruit_MPU9250::getMagMode(void) {
 */
 /**************************************************************************/
 const char *Adafruit_MPU9250::getMagModeString(mpu9250_ak8963_mag_mode_t mode) {
-
-  switch (mode) {
-      case MPU9250_AK8963_MODE_SINGLE:
-          return "MPU9250_AK8963_MODE_SINGLE";
-      case MPU9250_AK8963_MODE_8HZ:
-          return "MPU9250_AK8963_MODE_8HZ";
-      case MPU9250_AK8963_MODE_EXT_TRIG:
-          return "MPU9250_AK8963_MODE_EXT_TRIG";
-      case MPU9250_AK8963_MODE_100HZ:
-          return "MPU9250_AK8963_MODE_100HZ";
-      case MPU9250_AK8963_MODE_SELF_TEST:
-          return "MPU9250_AK8963_MODE_SELF_TEST";
-      case MPU9250_AK8963_MODE_FUSE_ROM:
-          return "MPU9250_AK8963_MODE_FUSE_ROM";
-      case MPU9250_AK8963_MODE_POWER_DOWN:
-          return "MPU9250_AK8963_MODE_POWER_DOWN";
-      default:
-          return "UNKNOWN";
-  }
+    switch (mode) {
+        case MPU9250_AK8963_MODE_SINGLE:
+            return "MPU9250_AK8963_MODE_SINGLE";
+        case MPU9250_AK8963_MODE_8HZ:
+            return "MPU9250_AK8963_MODE_8HZ";
+        case MPU9250_AK8963_MODE_EXT_TRIG:
+            return "MPU9250_AK8963_MODE_EXT_TRIG";
+        case MPU9250_AK8963_MODE_100HZ:
+            return "MPU9250_AK8963_MODE_100HZ";
+        case MPU9250_AK8963_MODE_SELF_TEST:
+            return "MPU9250_AK8963_MODE_SELF_TEST";
+        case MPU9250_AK8963_MODE_FUSE_ROM:
+            return "MPU9250_AK8963_MODE_FUSE_ROM";
+        case MPU9250_AK8963_MODE_POWER_DOWN:
+            return "MPU9250_AK8963_MODE_POWER_DOWN";
+        default:
+            return "UNKNOWN";
+    }
 }
 
 /**************************************************************************/
@@ -363,37 +373,37 @@ const char *Adafruit_MPU9250::getMagModeString(mpu9250_ak8963_mag_mode_t mode) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setMagMode(mpu9250_ak8963_mag_mode_t new_mode) {
-  Adafruit_BusIO_Register control =
-      Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL, 1);
-  Adafruit_BusIO_RegisterBits mag_mode =
-      Adafruit_BusIO_RegisterBits(&control, 4, 0);
+    Adafruit_BusIO_Register control =
+        Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL, 1);
+    Adafruit_BusIO_RegisterBits mag_mode =
+        Adafruit_BusIO_RegisterBits(&control, 4, 0);
 
-  mag_mode.write(MPU9250_AK8963_MODE_POWER_DOWN);
-  delay(10);
-  switch (new_mode) {
-      case MPU9250_AK8963_MODE_SINGLE:
-          mag_mode.write(MPU9250_AK8963_MODE_SINGLE);
-          break;
-      case MPU9250_AK8963_MODE_8HZ:
-          mag_mode.write(MPU9250_AK8963_MODE_8HZ);
-          break;
-      case MPU9250_AK8963_MODE_EXT_TRIG:
-          mag_mode.write(MPU9250_AK8963_MODE_EXT_TRIG);
-          break;
-      case MPU9250_AK8963_MODE_100HZ:
-          mag_mode.write(MPU9250_AK8963_MODE_100HZ);
-          break;
-      case MPU9250_AK8963_MODE_SELF_TEST:
-          mag_mode.write(MPU9250_AK8963_MODE_SELF_TEST);
-          break;
-      case MPU9250_AK8963_MODE_FUSE_ROM:
-          mag_mode.write(MPU9250_AK8963_MODE_FUSE_ROM);
-          break;
-      default:
-          mag_mode.write(MPU9250_AK8963_MODE_POWER_DOWN);
-          break;
-  }
-  delay(10);
+    mag_mode.write(MPU9250_AK8963_MODE_POWER_DOWN);
+    delay(10);
+    switch (new_mode) {
+        case MPU9250_AK8963_MODE_SINGLE:
+            mag_mode.write(MPU9250_AK8963_MODE_SINGLE);
+            break;
+        case MPU9250_AK8963_MODE_8HZ:
+            mag_mode.write(MPU9250_AK8963_MODE_8HZ);
+            break;
+        case MPU9250_AK8963_MODE_EXT_TRIG:
+            mag_mode.write(MPU9250_AK8963_MODE_EXT_TRIG);
+            break;
+        case MPU9250_AK8963_MODE_100HZ:
+            mag_mode.write(MPU9250_AK8963_MODE_100HZ);
+            break;
+        case MPU9250_AK8963_MODE_SELF_TEST:
+            mag_mode.write(MPU9250_AK8963_MODE_SELF_TEST);
+            break;
+        case MPU9250_AK8963_MODE_FUSE_ROM:
+            mag_mode.write(MPU9250_AK8963_MODE_FUSE_ROM);
+            break;
+        default:
+            mag_mode.write(MPU9250_AK8963_MODE_POWER_DOWN);
+            break;
+    }
+    delay(10);
 }
 
 /**************************************************************************/
@@ -403,29 +413,31 @@ void Adafruit_MPU9250::setMagMode(mpu9250_ak8963_mag_mode_t new_mode) {
 */
 /**************************************************************************/
 mpu9250_ak8963_mag_sensitivity_t Adafruit_MPU9250::getMagSensitivity(void) {
-  Adafruit_BusIO_Register control =
-      Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL, 1);
-  Adafruit_BusIO_RegisterBits mag_sensitivity =
-      Adafruit_BusIO_RegisterBits(&control, 1, 4);
+    Adafruit_BusIO_Register control =
+        Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL, 1);
+    Adafruit_BusIO_RegisterBits mag_sensitivity =
+        Adafruit_BusIO_RegisterBits(&control, 1, 4);
 
-  return mag_sensitivity.read() ? MPU9250_AK8963_SENSITIVITY_16
-                                : MPU9250_AK8963_SENSITIVITY_14;
+    return mag_sensitivity.read() ? MPU9250_AK8963_SENSITIVITY_16
+                                  : MPU9250_AK8963_SENSITIVITY_14;
 }
 
 /**************************************************************************/
 /*!
     @brief Sets the magnetometer sensitivity
     @param  new_sensitivity
-            The new sensitivity to set. Must be a `mpu9250_ak8963_mag_sensitivity_t`
+            The new sensitivity to set. Must be a
+   `mpu9250_ak8963_mag_sensitivity_t`
 */
 /**************************************************************************/
-void Adafruit_MPU9250::setMagSensitivity(mpu9250_ak8963_mag_sensitivity_t new_range) {
-  Adafruit_BusIO_Register control =
-      Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL, 1);
-  Adafruit_BusIO_RegisterBits mag_sensitivity =
-      Adafruit_BusIO_RegisterBits(&control, 1, 4);
+void Adafruit_MPU9250::setMagSensitivity(
+    mpu9250_ak8963_mag_sensitivity_t new_range) {
+    Adafruit_BusIO_Register control =
+        Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_CNTL, 1);
+    Adafruit_BusIO_RegisterBits mag_sensitivity =
+        Adafruit_BusIO_RegisterBits(&control, 1, 4);
 
-  mag_sensitivity.write(new_range);
+    mag_sensitivity.write(new_range);
 }
 
 /**************************************************************************/
@@ -436,12 +448,12 @@ void Adafruit_MPU9250::setMagSensitivity(mpu9250_ak8963_mag_sensitivity_t new_ra
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setClock(mpu9250_clock_select_t new_clock) {
-  Adafruit_BusIO_Register pwr_mgmt =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
+    Adafruit_BusIO_Register pwr_mgmt =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
 
-  Adafruit_BusIO_RegisterBits clock_select =
-      Adafruit_BusIO_RegisterBits(&pwr_mgmt, 3, 0);
-  clock_select.write(new_clock);
+    Adafruit_BusIO_RegisterBits clock_select =
+        Adafruit_BusIO_RegisterBits(&pwr_mgmt, 3, 0);
+    clock_select.write(new_clock);
 }
 
 /**************************************************************************/
@@ -451,12 +463,12 @@ void Adafruit_MPU9250::setClock(mpu9250_clock_select_t new_clock) {
 */
 /**************************************************************************/
 mpu9250_clock_select_t Adafruit_MPU9250::getClock(void) {
-  Adafruit_BusIO_Register pwr_mgmt =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
+    Adafruit_BusIO_Register pwr_mgmt =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
 
-  Adafruit_BusIO_RegisterBits clock_select =
-      Adafruit_BusIO_RegisterBits(&pwr_mgmt, 3, 0);
-  return (mpu9250_clock_select_t)clock_select.read();
+    Adafruit_BusIO_RegisterBits clock_select =
+        Adafruit_BusIO_RegisterBits(&pwr_mgmt, 3, 0);
+    return (mpu9250_clock_select_t)clock_select.read();
 }
 
 /**************************************************************************/
@@ -466,11 +478,11 @@ mpu9250_clock_select_t Adafruit_MPU9250::getClock(void) {
  */
 /**************************************************************************/
 mpu9250_fsync_out_t Adafruit_MPU9250::getFsyncSampleOutput(void) {
-  Adafruit_BusIO_Register config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_CONFIG, 1);
-  Adafruit_BusIO_RegisterBits fsync_out =
-      Adafruit_BusIO_RegisterBits(&config, 3, 3);
-  return (mpu9250_fsync_out_t)fsync_out.read();
+    Adafruit_BusIO_Register config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_CONFIG, 1);
+    Adafruit_BusIO_RegisterBits fsync_out =
+        Adafruit_BusIO_RegisterBits(&config, 3, 3);
+    return (mpu9250_fsync_out_t)fsync_out.read();
 }
 
 /**************************************************************************/
@@ -482,11 +494,11 @@ mpu9250_fsync_out_t Adafruit_MPU9250::getFsyncSampleOutput(void) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setFsyncSampleOutput(mpu9250_fsync_out_t fsync_output) {
-  Adafruit_BusIO_Register config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_CONFIG, 1);
-  Adafruit_BusIO_RegisterBits fsync_out =
-      Adafruit_BusIO_RegisterBits(&config, 3, 3);
-  fsync_out.write(fsync_output);
+    Adafruit_BusIO_Register config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_CONFIG, 1);
+    Adafruit_BusIO_RegisterBits fsync_out =
+        Adafruit_BusIO_RegisterBits(&config, 3, 3);
+    fsync_out.write(fsync_output);
 }
 
 /**************************************************************************/
@@ -496,29 +508,29 @@ void Adafruit_MPU9250::setFsyncSampleOutput(mpu9250_fsync_out_t fsync_output) {
  */
 /**************************************************************************/
 mpu9250_gyro_bandwidth_t Adafruit_MPU9250::getGyroFilterBandwidth(void) {
-  Adafruit_BusIO_Register config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_CONFIG, 1);
+    Adafruit_BusIO_Register config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_CONFIG, 1);
 
-  Adafruit_BusIO_RegisterBits filter_config =
-      Adafruit_BusIO_RegisterBits(&config, 3, 0);
+    Adafruit_BusIO_RegisterBits filter_config =
+        Adafruit_BusIO_RegisterBits(&config, 3, 0);
 
-  uint8_t u = filter_config.read();
+    uint8_t u = filter_config.read();
 
-  Adafruit_BusIO_Register gyro_config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_GYRO_CONFIG, 1);
+    Adafruit_BusIO_Register gyro_config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_GYRO_CONFIG, 1);
 
-  Adafruit_BusIO_RegisterBits fchoice_b =
-      Adafruit_BusIO_RegisterBits(&gyro_config, 2, 0);
+    Adafruit_BusIO_RegisterBits fchoice_b =
+        Adafruit_BusIO_RegisterBits(&gyro_config, 2, 0);
 
-  uint8_t v = fchoice_b.read();
+    uint8_t v = fchoice_b.read();
 
-  if (v & 0x1) {
-      return MPU9250_GYRO_BAND_8800_HZ;
-  } else if (v == 0x2) {
-      return MPU9250_GYRO_BAND_3600_HZ;
-  } else {
-      return (mpu9250_gyro_bandwidth_t)(u);
-  }
+    if (v & 0x1) {
+        return MPU9250_GYRO_BAND_8800_HZ;
+    } else if (v == 0x2) {
+        return MPU9250_GYRO_BAND_3600_HZ;
+    } else {
+        return (mpu9250_gyro_bandwidth_t)(u);
+    }
 }
 
 /**************************************************************************/
@@ -527,22 +539,23 @@ mpu9250_gyro_bandwidth_t Adafruit_MPU9250::getGyroFilterBandwidth(void) {
  *    @param bandwidth the new `mpu9250_gyro_bandwidth_t` bandwidth
  */
 /**************************************************************************/
-void Adafruit_MPU9250::setGyroFilterBandwidth(mpu9250_gyro_bandwidth_t bandwidth) {
-  Adafruit_BusIO_Register gyro_config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_GYRO_CONFIG, 1);
+void Adafruit_MPU9250::setGyroFilterBandwidth(
+    mpu9250_gyro_bandwidth_t bandwidth) {
+    Adafruit_BusIO_Register gyro_config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_GYRO_CONFIG, 1);
 
-  Adafruit_BusIO_RegisterBits fchoice_b =
-      Adafruit_BusIO_RegisterBits(&gyro_config, 2, 0);
+    Adafruit_BusIO_RegisterBits fchoice_b =
+        Adafruit_BusIO_RegisterBits(&gyro_config, 2, 0);
 
-  fchoice_b.write((bandwidth >> 3) & 0x3);
+    fchoice_b.write((bandwidth >> 3) & 0x3);
 
-  Adafruit_BusIO_Register config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_CONFIG, 1);
+    Adafruit_BusIO_Register config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_CONFIG, 1);
 
-  Adafruit_BusIO_RegisterBits filter_config =
-      Adafruit_BusIO_RegisterBits(&config, 3, 0);
+    Adafruit_BusIO_RegisterBits filter_config =
+        Adafruit_BusIO_RegisterBits(&config, 3, 0);
 
-  filter_config.write(bandwidth & 0x7);
+    filter_config.write(bandwidth & 0x7);
 }
 
 /**************************************************************************/
@@ -552,20 +565,20 @@ void Adafruit_MPU9250::setGyroFilterBandwidth(mpu9250_gyro_bandwidth_t bandwidth
  */
 /**************************************************************************/
 mpu9250_accel_bandwidth_t Adafruit_MPU9250::getAccelFilterBandwidth(void) {
-  Adafruit_BusIO_Register config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_CONFIG2, 1);
+    Adafruit_BusIO_Register config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_CONFIG2, 1);
 
-  Adafruit_BusIO_RegisterBits filter_config =
-      Adafruit_BusIO_RegisterBits(&config, 4, 0);
+    Adafruit_BusIO_RegisterBits filter_config =
+        Adafruit_BusIO_RegisterBits(&config, 4, 0);
 
-  uint8_t u = filter_config.read();
-  if (u & 0x8) {
-    return  MPU9250_ACCEL_BAND_1130_HZ;
-  } else if (u == 0x7) {
-    return  MPU9250_ACCEL_BAND_460_HZ;
-  } else {
-    return (mpu9250_accel_bandwidth_t)u;
-  }
+    uint8_t u = filter_config.read();
+    if (u & 0x8) {
+        return MPU9250_ACCEL_BAND_1130_HZ;
+    } else if (u == 0x7) {
+        return MPU9250_ACCEL_BAND_460_HZ;
+    } else {
+        return (mpu9250_accel_bandwidth_t)u;
+    }
 }
 
 /**************************************************************************/
@@ -574,14 +587,15 @@ mpu9250_accel_bandwidth_t Adafruit_MPU9250::getAccelFilterBandwidth(void) {
  *    @param bandwidth the new `mpu9250_accel_bandwidth_t` bandwidth
  */
 /**************************************************************************/
-void Adafruit_MPU9250::setAccelFilterBandwidth(mpu9250_accel_bandwidth_t bandwidth) {
-  Adafruit_BusIO_Register config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_CONFIG2, 1);
+void Adafruit_MPU9250::setAccelFilterBandwidth(
+    mpu9250_accel_bandwidth_t bandwidth) {
+    Adafruit_BusIO_Register config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_CONFIG2, 1);
 
-  Adafruit_BusIO_RegisterBits filter_config =
-      Adafruit_BusIO_RegisterBits(&config, 4, 0);
+    Adafruit_BusIO_RegisterBits filter_config =
+        Adafruit_BusIO_RegisterBits(&config, 4, 0);
 
-  filter_config.write(bandwidth);
+    filter_config.write(bandwidth);
 }
 
 /**************************************************************************/
@@ -593,11 +607,11 @@ void Adafruit_MPU9250::setAccelFilterBandwidth(mpu9250_accel_bandwidth_t bandwid
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setInterruptPinPolarity(bool active_low) {
-  Adafruit_BusIO_Register int_pin_config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_PIN_CONFIG, 1);
-  Adafruit_BusIO_RegisterBits int_level =
-      Adafruit_BusIO_RegisterBits(&int_pin_config, 1, 7);
-  int_level.write(active_low);
+    Adafruit_BusIO_Register int_pin_config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_PIN_CONFIG, 1);
+    Adafruit_BusIO_RegisterBits int_level =
+        Adafruit_BusIO_RegisterBits(&int_pin_config, 1, 7);
+    int_level.write(active_low);
 }
 
 /**************************************************************************/
@@ -609,11 +623,11 @@ void Adafruit_MPU9250::setInterruptPinPolarity(bool active_low) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setInterruptPinLatch(bool held) {
-  Adafruit_BusIO_Register int_pin_config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_PIN_CONFIG, 1);
-  Adafruit_BusIO_RegisterBits int_latch =
-      Adafruit_BusIO_RegisterBits(&int_pin_config, 1, 5);
-  int_latch.write(held);
+    Adafruit_BusIO_Register int_pin_config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_PIN_CONFIG, 1);
+    Adafruit_BusIO_RegisterBits int_latch =
+        Adafruit_BusIO_RegisterBits(&int_pin_config, 1, 5);
+    int_latch.write(held);
 }
 
 /**************************************************************************/
@@ -625,11 +639,11 @@ void Adafruit_MPU9250::setInterruptPinLatch(bool held) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setMotionInterrupt(bool active) {
-  Adafruit_BusIO_Register int_enable =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_ENABLE, 1);
-  Adafruit_BusIO_RegisterBits int_motion =
-      Adafruit_BusIO_RegisterBits(&int_enable, 1, 6);
-  int_motion.write(active);
+    Adafruit_BusIO_Register int_enable =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_ENABLE, 1);
+    Adafruit_BusIO_RegisterBits int_motion =
+        Adafruit_BusIO_RegisterBits(&int_enable, 1, 6);
+    int_motion.write(active);
 }
 
 /**************************************************************************/
@@ -639,12 +653,12 @@ void Adafruit_MPU9250::setMotionInterrupt(bool active) {
  */
 /**************************************************************************/
 bool Adafruit_MPU9250::getMotionInterruptStatus(void) {
-  Adafruit_BusIO_Register status =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_STATUS, 1);
+    Adafruit_BusIO_Register status =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_STATUS, 1);
 
-  Adafruit_BusIO_RegisterBits motion =
-      Adafruit_BusIO_RegisterBits(&status, 1, 6);
-  return (bool)motion.read();
+    Adafruit_BusIO_RegisterBits motion =
+        Adafruit_BusIO_RegisterBits(&status, 1, 6);
+    return (bool)motion.read();
 }
 
 /**************************************************************************/
@@ -654,9 +668,9 @@ bool Adafruit_MPU9250::getMotionInterruptStatus(void) {
  */
 /**************************************************************************/
 void Adafruit_MPU9250::setMotionDetectionThreshold(uint8_t thr) {
-  Adafruit_BusIO_Register threshold =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_MOT_THR, 1);
-  threshold.write(thr);
+    Adafruit_BusIO_Register threshold =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_MOT_THR, 1);
+    threshold.write(thr);
 }
 
 /**************************************************************************/
@@ -670,18 +684,18 @@ void Adafruit_MPU9250::setMotionDetectionThreshold(uint8_t thr) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250::setI2CBypass(bool bypass) {
-  Adafruit_BusIO_Register int_pin_config =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_PIN_CONFIG, 1);
-  Adafruit_BusIO_RegisterBits i2c_bypass =
-      Adafruit_BusIO_RegisterBits(&int_pin_config, 1, 1);
+    Adafruit_BusIO_Register int_pin_config =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_INT_PIN_CONFIG, 1);
+    Adafruit_BusIO_RegisterBits i2c_bypass =
+        Adafruit_BusIO_RegisterBits(&int_pin_config, 1, 1);
 
-  Adafruit_BusIO_Register user_ctrl =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_USER_CTRL, 1);
-  Adafruit_BusIO_RegisterBits i2c_master_enable =
-      Adafruit_BusIO_RegisterBits(&user_ctrl, 1, 5);
+    Adafruit_BusIO_Register user_ctrl =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_USER_CTRL, 1);
+    Adafruit_BusIO_RegisterBits i2c_master_enable =
+        Adafruit_BusIO_RegisterBits(&user_ctrl, 1, 5);
 
-  i2c_bypass.write(bypass);
-  i2c_master_enable.write(!bypass);
+    i2c_bypass.write(bypass);
+    i2c_master_enable.write(!bypass);
 }
 
 /**************************************************************************/
@@ -696,12 +710,12 @@ void Adafruit_MPU9250::setI2CBypass(bool bypass) {
 */
 /**************************************************************************/
 bool Adafruit_MPU9250::enableSleep(bool enable) {
-  Adafruit_BusIO_Register pwr_mgmt =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
+    Adafruit_BusIO_Register pwr_mgmt =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
 
-  Adafruit_BusIO_RegisterBits sleep =
-      Adafruit_BusIO_RegisterBits(&pwr_mgmt, 1, 6);
-  return sleep.write(enable);
+    Adafruit_BusIO_RegisterBits sleep =
+        Adafruit_BusIO_RegisterBits(&pwr_mgmt, 1, 6);
+    return sleep.write(enable);
 }
 
 /**************************************************************************/
@@ -718,12 +732,12 @@ bool Adafruit_MPU9250::enableSleep(bool enable) {
 */
 /**************************************************************************/
 bool Adafruit_MPU9250::enableCycle(bool enable) {
-  Adafruit_BusIO_Register pwr_mgmt =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
+    Adafruit_BusIO_Register pwr_mgmt =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
 
-  Adafruit_BusIO_RegisterBits cycle =
-      Adafruit_BusIO_RegisterBits(&pwr_mgmt, 1, 5);
-  return cycle.write(enable);
+    Adafruit_BusIO_RegisterBits cycle =
+        Adafruit_BusIO_RegisterBits(&pwr_mgmt, 1, 5);
+    return cycle.write(enable);
 }
 
 /**************************************************************************/
@@ -733,12 +747,12 @@ bool Adafruit_MPU9250::enableCycle(bool enable) {
  */
 /**************************************************************************/
 mpu9250_cycle_rate_t Adafruit_MPU9250::getCycleRate(void) {
-  Adafruit_BusIO_Register pwr_mgmt_2 =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_2, 1);
+    Adafruit_BusIO_Register pwr_mgmt_2 =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_2, 1);
 
-  Adafruit_BusIO_RegisterBits cycle_rate =
-      Adafruit_BusIO_RegisterBits(&pwr_mgmt_2, 2, 6);
-  return (mpu9250_cycle_rate_t)cycle_rate.read();
+    Adafruit_BusIO_RegisterBits cycle_rate =
+        Adafruit_BusIO_RegisterBits(&pwr_mgmt_2, 2, 6);
+    return (mpu9250_cycle_rate_t)cycle_rate.read();
 }
 
 /**************************************************************************/
@@ -750,12 +764,12 @@ mpu9250_cycle_rate_t Adafruit_MPU9250::getCycleRate(void) {
  */
 /**************************************************************************/
 void Adafruit_MPU9250::setCycleRate(mpu9250_cycle_rate_t rate) {
-  Adafruit_BusIO_Register pwr_mgmt_2 =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_2, 1);
+    Adafruit_BusIO_Register pwr_mgmt_2 =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_2, 1);
 
-  Adafruit_BusIO_RegisterBits cycle_rate =
-      Adafruit_BusIO_RegisterBits(&pwr_mgmt_2, 2, 6);
-  cycle_rate.write(rate);
+    Adafruit_BusIO_RegisterBits cycle_rate =
+        Adafruit_BusIO_RegisterBits(&pwr_mgmt_2, 2, 6);
+    cycle_rate.write(rate);
 }
 
 /**************************************************************************/
@@ -775,12 +789,13 @@ void Adafruit_MPU9250::setCycleRate(mpu9250_cycle_rate_t rate) {
 /**************************************************************************/
 bool Adafruit_MPU9250::setGyroStandby(bool xAxisStandby, bool yAxisStandby,
                                       bool zAxisStandby) {
-  Adafruit_BusIO_Register pwr_mgmt_2 =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_2, 1);
+    Adafruit_BusIO_Register pwr_mgmt_2 =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_2, 1);
 
-  Adafruit_BusIO_RegisterBits gyro_stdby =
-      Adafruit_BusIO_RegisterBits(&pwr_mgmt_2, 3, 0);
-  return gyro_stdby.write(xAxisStandby << 2 | yAxisStandby << 1 | zAxisStandby);
+    Adafruit_BusIO_RegisterBits gyro_stdby =
+        Adafruit_BusIO_RegisterBits(&pwr_mgmt_2, 3, 0);
+    return gyro_stdby.write(xAxisStandby << 2 | yAxisStandby << 1 |
+                            zAxisStandby);
 }
 
 /**************************************************************************/
@@ -801,13 +816,13 @@ bool Adafruit_MPU9250::setGyroStandby(bool xAxisStandby, bool yAxisStandby,
 bool Adafruit_MPU9250::setAccelerometerStandby(bool xAxisStandby,
                                                bool yAxisStandby,
                                                bool zAxisStandby) {
-  Adafruit_BusIO_Register pwr_mgmt_2 =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_2, 1);
+    Adafruit_BusIO_Register pwr_mgmt_2 =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_2, 1);
 
-  Adafruit_BusIO_RegisterBits accel_stdby =
-      Adafruit_BusIO_RegisterBits(&pwr_mgmt_2, 3, 3);
-  return accel_stdby.write(xAxisStandby << 2 | yAxisStandby << 1 |
-                           zAxisStandby);
+    Adafruit_BusIO_RegisterBits accel_stdby =
+        Adafruit_BusIO_RegisterBits(&pwr_mgmt_2, 3, 3);
+    return accel_stdby.write(xAxisStandby << 2 | yAxisStandby << 1 |
+                             zAxisStandby);
 }
 
 /**************************************************************************/
@@ -821,12 +836,12 @@ bool Adafruit_MPU9250::setAccelerometerStandby(bool xAxisStandby,
  */
 /**************************************************************************/
 bool Adafruit_MPU9250::setTemperatureStandby(bool enable) {
-  Adafruit_BusIO_Register pwr_mgmt =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
+    Adafruit_BusIO_Register pwr_mgmt =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_PWR_MGMT_1, 1);
 
-  Adafruit_BusIO_RegisterBits temp_stdby =
-      Adafruit_BusIO_RegisterBits(&pwr_mgmt, 1, 3);
-  return temp_stdby.write(enable);
+    Adafruit_BusIO_RegisterBits temp_stdby =
+        Adafruit_BusIO_RegisterBits(&pwr_mgmt, 1, 3);
+    return temp_stdby.write(enable);
 }
 
 /******************* Adafruit_Sensor functions *****************/
@@ -835,111 +850,121 @@ bool Adafruit_MPU9250::setTemperatureStandby(bool enable) {
  */
 /**************************************************************************/
 void Adafruit_MPU9250::_read(void) {
+    // get raw readings of temp, accel, and gyro
+    Adafruit_BusIO_Register data_reg =
+        Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_OUT, 14);
 
-  // get raw readings of temp, accel, and gyro
-  Adafruit_BusIO_Register data_reg =
-      Adafruit_BusIO_Register(i2c_dev, MPU9250_ACCEL_OUT, 14);
+    uint8_t buffer[14];
+    data_reg.read(buffer, 14);
 
-  uint8_t buffer[14];
-  data_reg.read(buffer, 14);
+    rawAccX = buffer[0] << 8 | buffer[1];
+    rawAccY = buffer[2] << 8 | buffer[3];
+    rawAccZ = buffer[4] << 8 | buffer[5];
 
-  rawAccX = buffer[0] << 8 | buffer[1];
-  rawAccY = buffer[2] << 8 | buffer[3];
-  rawAccZ = buffer[4] << 8 | buffer[5];
+    rawTemp = buffer[6] << 8 | buffer[7];
 
-  rawTemp = buffer[6] << 8 | buffer[7];
+    rawGyroX = buffer[8] << 8 | buffer[9];
+    rawGyroY = buffer[10] << 8 | buffer[11];
+    rawGyroZ = buffer[12] << 8 | buffer[13];
 
-  rawGyroX = buffer[8] << 8 | buffer[9];
-  rawGyroY = buffer[10] << 8 | buffer[11];
-  rawGyroZ = buffer[12] << 8 | buffer[13];
+    // adjust raw data for each sensor
+    temperature = (rawTemp / 340.0) + 36.53;
 
-  // adjust raw data for each sensor
-  temperature = (rawTemp / 340.0) + 36.53;
+    mpu9250_accel_range_t accel_range = getAccelerometerRange();
 
-  mpu9250_accel_range_t accel_range = getAccelerometerRange();
+    float accel_scale = 1;
+    if (accel_range == MPU9250_RANGE_16_G) {
+        accel_scale = 2048;
+    }
+    if (accel_range == MPU9250_RANGE_8_G) {
+        accel_scale = 4096;
+    }
+    if (accel_range == MPU9250_RANGE_4_G) {
+        accel_scale = 8192;
+    }
+    if (accel_range == MPU9250_RANGE_2_G) {
+        accel_scale = 16384;
+    }
 
-  float accel_scale = 1;
-  if (accel_range == MPU9250_RANGE_16_G)
-    accel_scale = 2048;
-  if (accel_range == MPU9250_RANGE_8_G)
-    accel_scale = 4096;
-  if (accel_range == MPU9250_RANGE_4_G)
-    accel_scale = 8192;
-  if (accel_range == MPU9250_RANGE_2_G)
-    accel_scale = 16384;
+    accX = ((float)rawAccX) / accel_scale;
+    accY = ((float)rawAccY) / accel_scale;
+    accZ = ((float)rawAccZ) / accel_scale;
 
-  accX = ((float)rawAccX) / accel_scale;
-  accY = ((float)rawAccY) / accel_scale;
-  accZ = ((float)rawAccZ) / accel_scale;
+    mpu9250_gyro_range_t gyro_range = getGyroRange();
 
-  mpu9250_gyro_range_t gyro_range = getGyroRange();
+    float gyro_scale = 1;
+    if (gyro_range == MPU9250_RANGE_250_DEG) {
+        gyro_scale = 131;
+    }
+    if (gyro_range == MPU9250_RANGE_500_DEG) {
+        gyro_scale = 65.5;
+    }
+    if (gyro_range == MPU9250_RANGE_1000_DEG) {
+        gyro_scale = 32.8;
+    }
+    if (gyro_range == MPU9250_RANGE_2000_DEG) {
+        gyro_scale = 16.4;
+    }
 
-  float gyro_scale = 1;
-  if (gyro_range == MPU9250_RANGE_250_DEG)
-    gyro_scale = 131;
-  if (gyro_range == MPU9250_RANGE_500_DEG)
-    gyro_scale = 65.5;
-  if (gyro_range == MPU9250_RANGE_1000_DEG)
-    gyro_scale = 32.8;
-  if (gyro_range == MPU9250_RANGE_2000_DEG)
-    gyro_scale = 16.4;
+    gyroX = ((float)rawGyroX) / gyro_scale;
+    gyroY = ((float)rawGyroY) / gyro_scale;
+    gyroZ = ((float)rawGyroZ) / gyro_scale;
 
-  gyroX = ((float)rawGyroX) / gyro_scale;
-  gyroY = ((float)rawGyroY) / gyro_scale;
-  gyroZ = ((float)rawGyroZ) / gyro_scale;
+    Adafruit_BusIO_Register mag_st1 =
+        Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_ST1, 1);
+    Adafruit_BusIO_RegisterBits drdy =
+        Adafruit_BusIO_RegisterBits(&mag_st1, 1, 0);
 
-  Adafruit_BusIO_Register mag_st1 =
-      Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_ST1, 1);
-  Adafruit_BusIO_RegisterBits drdy =
-      Adafruit_BusIO_RegisterBits(&mag_st1, 1, 0);
+    // only update sensor data if the magnetometer has a new data
+    if (drdy.read()) {
+        Adafruit_BusIO_Register mag_data_reg =
+            Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_HXL, 7);
+        mag_data_reg.read(buffer, 7);
 
-  // only update sensor data if the magnetometer has a new data
-  if (drdy.read()) {
-      Adafruit_BusIO_Register mag_data_reg =
-          Adafruit_BusIO_Register(ak8963_i2c_dev, MPU9250_AK8963_HXL, 7);
-      mag_data_reg.read(buffer, 7);
+        //  ignore new data if there was overflow
+        uint8_t st2 = buffer[6];
+        if ((st2 & 0x8) == 0) {
+            rawMagX = buffer[1] << 8 | buffer[0];
+            rawMagY = buffer[3] << 8 | buffer[2];
+            rawMagZ = buffer[5] << 8 | buffer[4];
 
-      //  ignore new data if there was overflow
-      uint8_t st2 = buffer[6];
-      if ((st2 & 0x8) == 0) {
-          rawMagX = buffer[1] << 8 | buffer[0];
-          rawMagY = buffer[3] << 8 | buffer[2];
-          rawMagZ = buffer[5] << 8 | buffer[4];
+            mpu9250_ak8963_mag_sensitivity_t mag_sensitivity =
+                getMagSensitivity();
+            float mag_scale;
+            if (mag_sensitivity == MPU9250_AK8963_SENSITIVITY_16) {
+                // 16b sensitivity
+                mag_scale = 0.15;
+            } else {
+                // 14b sensitivity
+                mag_scale = 0.6;
+            }
 
-          mpu9250_ak8963_mag_sensitivity_t mag_sensitivity = getMagSensitivity();
-          float mag_scale;
-          if (mag_sensitivity == MPU9250_AK8963_SENSITIVITY_16)
-            // 16b sensitivity
-            mag_scale = 0.15;
-          else
-            // 14b sensitivity
-            mag_scale = 0.6;
-          
-          // The magnetometer in the MPU9250 is not aligned the same way as
-          // the accelerometer and gyro.  The x and y axes of the acceleromter
-          // are swapped when aligned with the coordinate system of the
-          // magnetometer and the z directions are reversed.  Adjust the
-          // assignments of magX, magY, and magZ so the coodinate systems match
-          magX = asay * rawMagY * mag_scale;
-          magY = asax * rawMagX * mag_scale;
-          magZ = -(asaz * rawMagZ * mag_scale);
+            // The magnetometer in the MPU9250 is not aligned the same way as
+            // the accelerometer and gyro.  The x and y axes of the acceleromter
+            // are swapped when aligned with the coordinate system of the
+            // magnetometer and the z directions are reversed.  Adjust the
+            // assignments of magX, magY, and magZ so the coodinate systems
+            // match
+            magX = asay * rawMagY * mag_scale;
+            magY = asax * rawMagX * mag_scale;
+            magZ = -(asaz * rawMagZ * mag_scale);
 #ifdef DEBUG_SERIAL
-          char debug_buffer[1000];
-          snprintf(debug_buffer, sizeof(debug_buffer),
-                   "asax = %f, rawMagX = %d, mag_scale = %f, magX = %f", 
-                   asax, rawMagX, mag_scale, magX);
-          DEBUG_SERIAL.println(debug_buffer);
-          snprintf(debug_buffer, sizeof(debug_buffer),
-                   "asay = %f, rawMagY = %d, mag_scale = %f, magY = %f", 
-                   asay, rawMagY, mag_scale, magY);
-          DEBUG_SERIAL.println(debug_buffer);
-          snprintf(debug_buffer, sizeof(debug_buffer),
-                   "asaz = %f, rawMagZ = %d, mag_scale = %f, magZ = %f", 
-                   asaz, rawMagZ, mag_scale, magZ);
-          DEBUG_SERIAL.println(debug_buffer);
+            char debug_buffer[1000];
+            snprintf(debug_buffer, sizeof(debug_buffer),
+                     "asax = %f, rawMagX = %d, mag_scale = %f, magX = %f", asax,
+                     rawMagX, mag_scale, magX);
+            DEBUG_SERIAL.println(debug_buffer);
+            snprintf(debug_buffer, sizeof(debug_buffer),
+                     "asay = %f, rawMagY = %d, mag_scale = %f, magY = %f", asay,
+                     rawMagY, mag_scale, magY);
+            DEBUG_SERIAL.println(debug_buffer);
+            snprintf(debug_buffer, sizeof(debug_buffer),
+                     "asaz = %f, rawMagZ = %d, mag_scale = %f, magZ = %f", asaz,
+                     rawMagZ, mag_scale, magZ);
+            DEBUG_SERIAL.println(debug_buffer);
 #endif
-      }
-  }
+        }
+    }
 }
 
 /**************************************************************************/
@@ -959,62 +984,59 @@ void Adafruit_MPU9250::_read(void) {
 /**************************************************************************/
 bool Adafruit_MPU9250::getEvent(sensors_event_t *accel, sensors_event_t *gyro,
                                 sensors_event_t *temp) {
-  uint32_t timestamp = millis();
-  _read();
+    uint32_t timestamp = millis();
+    _read();
 
-  fillTempEvent(temp, timestamp);
-  fillAccelEvent(accel, timestamp);
-  fillGyroEvent(gyro, timestamp);
+    fillTempEvent(temp, timestamp);
+    fillAccelEvent(accel, timestamp);
+    fillGyroEvent(gyro, timestamp);
 
-  return true;
+    return true;
 }
 
 void Adafruit_MPU9250::fillTempEvent(sensors_event_t *temp,
                                      uint32_t timestamp) {
-
-  memset(temp, 0, sizeof(sensors_event_t));
-  temp->version = sizeof(sensors_event_t);
-  temp->sensor_id = _sensorid_temp;
-  temp->type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
-  temp->timestamp = timestamp;
-  temp->temperature = temperature;
+    memset(temp, 0, sizeof(sensors_event_t));
+    temp->version = sizeof(sensors_event_t);
+    temp->sensor_id = _sensorid_temp;
+    temp->type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
+    temp->timestamp = timestamp;
+    temp->temperature = temperature;
 }
 
 void Adafruit_MPU9250::fillAccelEvent(sensors_event_t *accel,
                                       uint32_t timestamp) {
-
-  memset(accel, 0, sizeof(sensors_event_t));
-  accel->version = 1;
-  accel->sensor_id = _sensorid_accel;
-  accel->type = SENSOR_TYPE_ACCELEROMETER;
-  accel->timestamp = timestamp;
-  accel->acceleration.x = accX * SENSORS_GRAVITY_STANDARD;
-  accel->acceleration.y = accY * SENSORS_GRAVITY_STANDARD;
-  accel->acceleration.z = accZ * SENSORS_GRAVITY_STANDARD;
+    memset(accel, 0, sizeof(sensors_event_t));
+    accel->version = 1;
+    accel->sensor_id = _sensorid_accel;
+    accel->type = SENSOR_TYPE_ACCELEROMETER;
+    accel->timestamp = timestamp;
+    accel->acceleration.x = accX * SENSORS_GRAVITY_STANDARD;
+    accel->acceleration.y = accY * SENSORS_GRAVITY_STANDARD;
+    accel->acceleration.z = accZ * SENSORS_GRAVITY_STANDARD;
 }
 
 void Adafruit_MPU9250::fillGyroEvent(sensors_event_t *gyro,
                                      uint32_t timestamp) {
-  memset(gyro, 0, sizeof(sensors_event_t));
-  gyro->version = 1;
-  gyro->sensor_id = _sensorid_gyro;
-  gyro->type = SENSOR_TYPE_GYROSCOPE;
-  gyro->timestamp = timestamp;
-  gyro->gyro.x = gyroX * SENSORS_DPS_TO_RADS;
-  gyro->gyro.y = gyroY * SENSORS_DPS_TO_RADS;
-  gyro->gyro.z = gyroZ * SENSORS_DPS_TO_RADS;
+    memset(gyro, 0, sizeof(sensors_event_t));
+    gyro->version = 1;
+    gyro->sensor_id = _sensorid_gyro;
+    gyro->type = SENSOR_TYPE_GYROSCOPE;
+    gyro->timestamp = timestamp;
+    gyro->gyro.x = gyroX * SENSORS_DPS_TO_RADS;
+    gyro->gyro.y = gyroY * SENSORS_DPS_TO_RADS;
+    gyro->gyro.z = gyroZ * SENSORS_DPS_TO_RADS;
 }
 
-void Adafruit_MPU9250::fillMagEvent(sensors_event_t *mag,
-                                    uint32_t timestamp) {
-  memset(mag, 0, sizeof(sensors_event_t));
-  mag->version = 1;
-  mag->sensor_id = _sensorid_mag;
-  mag->type = SENSOR_TYPE_MAGNETIC_FIELD;
-  mag->timestamp = timestamp;
-  mag->magnetic.x = magX;
-  mag->magnetic.y = magY;
-  mag->magnetic.z  = magZ;
+void Adafruit_MPU9250::fillMagEvent(sensors_event_t *mag, uint32_t timestamp) {
+    memset(mag, 0, sizeof(sensors_event_t));
+    mag->version = 1;
+    mag->sensor_id = _sensorid_mag;
+    mag->type = SENSOR_TYPE_MAGNETIC_FIELD;
+    mag->timestamp = timestamp;
+    mag->magnetic.x = magX;
+    mag->magnetic.y = magY;
+    mag->magnetic.z = magZ;
 }
 
 /*!
@@ -1022,7 +1044,7 @@ void Adafruit_MPU9250::fillMagEvent(sensors_event_t *mag,
   @return Adafruit_Sensor pointer to temperature sensor
 */
 Adafruit_Sensor *Adafruit_MPU9250::getTemperatureSensor(void) {
-  return temp_sensor;
+    return temp_sensor;
 }
 
 /*!
@@ -1031,7 +1053,7 @@ Adafruit_Sensor *Adafruit_MPU9250::getTemperatureSensor(void) {
     @return Adafruit_Sensor pointer to accelerometer sensor
  */
 Adafruit_Sensor *Adafruit_MPU9250::getAccelerometerSensor(void) {
-  return accel_sensor;
+    return accel_sensor;
 }
 
 /*!
@@ -1044,7 +1066,9 @@ Adafruit_Sensor *Adafruit_MPU9250::getGyroSensor(void) { return gyro_sensor; }
     @brief  Gets an Adafruit Unified Sensor object for the gyro sensor component
     @return Adafruit_Sensor pointer to gyro sensor
  */
-Adafruit_Sensor *Adafruit_MPU9250::getMagnetometerSensor(void) { return mag_sensor; }
+Adafruit_Sensor *Adafruit_MPU9250::getMagnetometerSensor(void) {
+    return mag_sensor;
+}
 
 /**************************************************************************/
 /*!
@@ -1052,19 +1076,19 @@ Adafruit_Sensor *Adafruit_MPU9250::getMagnetometerSensor(void) { return mag_sens
 */
 /**************************************************************************/
 void Adafruit_MPU9250_Gyro::getSensor(sensor_t *sensor) {
-  /* Clear the sensor_t object */
-  memset(sensor, 0, sizeof(sensor_t));
+    /* Clear the sensor_t object */
+    memset(sensor, 0, sizeof(sensor_t));
 
-  /* Insert the sensor name in the fixed length char array */
-  strncpy(sensor->name, "MPU9250_G", sizeof(sensor->name) - 1);
-  sensor->name[sizeof(sensor->name) - 1] = 0;
-  sensor->version = 1;
-  sensor->sensor_id = _sensorID;
-  sensor->type = SENSOR_TYPE_GYROSCOPE;
-  sensor->min_delay = 0;
-  sensor->min_value = -34.91; /* -000 dps -> rad/s (radians per second) */
-  sensor->max_value = +34.91;
-  sensor->resolution = 1.332e-4; /* 131.5 LSB/DPS */
+    /* Insert the sensor name in the fixed length char array */
+    strncpy(sensor->name, "MPU9250_G", sizeof(sensor->name) - 1);
+    sensor->name[sizeof(sensor->name) - 1] = 0;
+    sensor->version = 1;
+    sensor->sensor_id = _sensorID;
+    sensor->type = SENSOR_TYPE_GYROSCOPE;
+    sensor->min_delay = 0;
+    sensor->min_value = -34.91; /* -000 dps -> rad/s (radians per second) */
+    sensor->max_value = +34.91;
+    sensor->resolution = 1.332e-4; /* 131.5 LSB/DPS */
 }
 
 /**************************************************************************/
@@ -1075,10 +1099,10 @@ void Adafruit_MPU9250_Gyro::getSensor(sensor_t *sensor) {
 */
 /**************************************************************************/
 bool Adafruit_MPU9250_Gyro::getEvent(sensors_event_t *event) {
-  _theMPU9250->_read();
-  _theMPU9250->fillGyroEvent(event, millis());
+    _theMPU9250->_read();
+    _theMPU9250->fillGyroEvent(event, millis());
 
-  return true;
+    return true;
 }
 
 /**************************************************************************/
@@ -1087,19 +1111,19 @@ bool Adafruit_MPU9250_Gyro::getEvent(sensors_event_t *event) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250_Accelerometer::getSensor(sensor_t *sensor) {
-  /* Clear the sensor_t object */
-  memset(sensor, 0, sizeof(sensor_t));
+    /* Clear the sensor_t object */
+    memset(sensor, 0, sizeof(sensor_t));
 
-  /* Insert the sensor name in the fixed length char array */
-  strncpy(sensor->name, "MPU9250_A", sizeof(sensor->name) - 1);
-  sensor->name[sizeof(sensor->name) - 1] = 0;
-  sensor->version = 1;
-  sensor->sensor_id = _sensorID;
-  sensor->type = SENSOR_TYPE_ACCELEROMETER;
-  sensor->min_delay = 0;
-  sensor->min_value = -156.9064F; /*  -16g = 156.9064 m/s^2  */
-  sensor->max_value = 156.9064F;  /* 16g = 156.9064 m/s^2  */
-  sensor->resolution = 0.061;     /* 0.061 mg/LSB at +-2g */
+    /* Insert the sensor name in the fixed length char array */
+    strncpy(sensor->name, "MPU9250_A", sizeof(sensor->name) - 1);
+    sensor->name[sizeof(sensor->name) - 1] = 0;
+    sensor->version = 1;
+    sensor->sensor_id = _sensorID;
+    sensor->type = SENSOR_TYPE_ACCELEROMETER;
+    sensor->min_delay = 0;
+    sensor->min_value = -156.9064F; /*  -16g = 156.9064 m/s^2  */
+    sensor->max_value = 156.9064F;  /* 16g = 156.9064 m/s^2  */
+    sensor->resolution = 0.061;     /* 0.061 mg/LSB at +-2g */
 }
 
 /**************************************************************************/
@@ -1110,10 +1134,10 @@ void Adafruit_MPU9250_Accelerometer::getSensor(sensor_t *sensor) {
 */
 /**************************************************************************/
 bool Adafruit_MPU9250_Accelerometer::getEvent(sensors_event_t *event) {
-  _theMPU9250->_read();
-  _theMPU9250->fillAccelEvent(event, millis());
+    _theMPU9250->_read();
+    _theMPU9250->fillAccelEvent(event, millis());
 
-  return true;
+    return true;
 }
 
 /**************************************************************************/
@@ -1122,19 +1146,19 @@ bool Adafruit_MPU9250_Accelerometer::getEvent(sensors_event_t *event) {
 */
 /**************************************************************************/
 void Adafruit_MPU9250_Temp::getSensor(sensor_t *sensor) {
-  /* Clear the sensor_t object */
-  memset(sensor, 0, sizeof(sensor_t));
+    /* Clear the sensor_t object */
+    memset(sensor, 0, sizeof(sensor_t));
 
-  /* Insert the sensor name in the fixed length char array */
-  strncpy(sensor->name, "MPU9250_T", sizeof(sensor->name) - 1);
-  sensor->name[sizeof(sensor->name) - 1] = 0;
-  sensor->version = 1;
-  sensor->sensor_id = _sensorID;
-  sensor->type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
-  sensor->min_delay = 0;
-  sensor->min_value = -40;
-  sensor->max_value = 105;
-  sensor->resolution = 0.00294; /* 340 LSB/C => 1/340 C/LSB */
+    /* Insert the sensor name in the fixed length char array */
+    strncpy(sensor->name, "MPU9250_T", sizeof(sensor->name) - 1);
+    sensor->name[sizeof(sensor->name) - 1] = 0;
+    sensor->version = 1;
+    sensor->sensor_id = _sensorID;
+    sensor->type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
+    sensor->min_delay = 0;
+    sensor->min_value = -40;
+    sensor->max_value = 105;
+    sensor->resolution = 0.00294; /* 340 LSB/C => 1/340 C/LSB */
 }
 
 /**************************************************************************/
@@ -1145,31 +1169,31 @@ void Adafruit_MPU9250_Temp::getSensor(sensor_t *sensor) {
 */
 /**************************************************************************/
 bool Adafruit_MPU9250_Temp::getEvent(sensors_event_t *event) {
-  _theMPU9250->_read();
-  _theMPU9250->fillTempEvent(event, millis());
+    _theMPU9250->_read();
+    _theMPU9250->fillTempEvent(event, millis());
 
-  return true;
+    return true;
 }
 
 /**************************************************************************/
 /*!
-    @brief  Gets the sensor_t data for the MPU9250's magnetometer 
+    @brief  Gets the sensor_t data for the MPU9250's magnetometer
 */
 /**************************************************************************/
 void Adafruit_MPU9250_Magnetometer::getSensor(sensor_t *sensor) {
-  /* Clear the sensor_t object */
-  memset(sensor, 0, sizeof(sensor_t));
+    /* Clear the sensor_t object */
+    memset(sensor, 0, sizeof(sensor_t));
 
-  /* Insert the sensor name in the fixed length char array */
-  strncpy(sensor->name, "MPU9250_M", sizeof(sensor->name) - 1);
-  sensor->name[sizeof(sensor->name) - 1] = 0;
-  sensor->version = 1;
-  sensor->sensor_id = _sensorID;
-  sensor->type = SENSOR_TYPE_MAGNETIC_FIELD;
-  sensor->min_delay = 0;
-  sensor->min_value = -4900; 
-  sensor->max_value = +4900;
-  sensor->resolution = 0.15;
+    /* Insert the sensor name in the fixed length char array */
+    strncpy(sensor->name, "MPU9250_M", sizeof(sensor->name) - 1);
+    sensor->name[sizeof(sensor->name) - 1] = 0;
+    sensor->version = 1;
+    sensor->sensor_id = _sensorID;
+    sensor->type = SENSOR_TYPE_MAGNETIC_FIELD;
+    sensor->min_delay = 0;
+    sensor->min_value = -4900;
+    sensor->max_value = +4900;
+    sensor->resolution = 0.15;
 }
 
 /**************************************************************************/
@@ -1180,8 +1204,8 @@ void Adafruit_MPU9250_Magnetometer::getSensor(sensor_t *sensor) {
 */
 /**************************************************************************/
 bool Adafruit_MPU9250_Magnetometer::getEvent(sensors_event_t *event) {
-  _theMPU9250->_read();
-  _theMPU9250->fillMagEvent(event, millis());
+    _theMPU9250->_read();
+    _theMPU9250->fillMagEvent(event, millis());
 
-  return true;
+    return true;
 }

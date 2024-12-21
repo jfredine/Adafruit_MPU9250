@@ -1,6 +1,6 @@
-#include <Arduino.h>
-#include <Adafruit_Sensor_Calibration.h>
 #include <Adafruit_MPU9250.h>
+#include <Adafruit_Sensor_Calibration.h>
+#include <Arduino.h>
 
 #ifdef TARGET_RASPBERRY_PI_PICO
 auto &serial = Serial1;
@@ -331,7 +331,8 @@ void setup() {
         serial.println("Failed to identify MPU9250");
         while (1) delay(10);
     } else if (retval == 3) {
-      serial.println("Failed to identify AK8963");
+        serial.println("Failed to identify AK8963");
+        while (1) delay(10);
     }
 
     accelerometer->printSensorDetails();
@@ -446,9 +447,9 @@ void loop() {
 int init_sensors(void) {
     int retval = mpu9250.begin();
     if (retval == 0) {
-      accelerometer = mpu9250.getAccelerometerSensor();
-      gyroscope = mpu9250.getGyroSensor();
-      magnetometer = mpu9250.getMagnetometerSensor();
+        accelerometer = mpu9250.getAccelerometerSensor();
+        gyroscope = mpu9250.getGyroSensor();
+        magnetometer = mpu9250.getMagnetometerSensor();
     }
 
     return retval;
